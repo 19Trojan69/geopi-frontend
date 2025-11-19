@@ -40,5 +40,47 @@
   </footer>
 
   <script src="script.js"></script>
+<!-- ===== GeoPi Test Payment – Schritt 10 ===== -->
+<section style="max-width:420px;margin:20px auto;background:#ffffff;padding:20px;border-radius:14px;box-shadow:0 0 12px rgba(0,0,0,0.15);">
+  <h2 style="text-align:center;margin-bottom:10px;color:#7a2de2;">
+    GeoPi Test Payment
+  </h2>
+
+  <p style="text-align:center;line-height:1.5;margin-bottom:18px;">
+    Bitte führe eine Testzahlung mit 5 Test-Pi durch, um Schritt 10 abzuschließen.
+  </p>
+
+  <button id="geopi-pay-btn" style="width:100%;padding:15px;background:#7a2de2;color:#fff;border:none;border-radius:12px;font-size:18px;cursor:pointer;">
+    5 Test-Pi bezahlen
+  </button>
+
+  <div id="geopi-pay-status" style="margin-top:20px;text-align:center;font-weight:600;color:#333;"></div>
+</section>
+<script>
+  const Pi = window.Pi;
+
+  Pi.init({
+    version: "2.0",
+    sandbox: true
+  });
+
+  document.getElementById("geopi-pay-btn").onclick = async () => {
+    const status = document.getElementById("geopi-pay-status");
+    status.innerHTML = "Warte auf Bestätigung …";
+
+    try {
+      await Pi.createPayment({
+        amount: 5,
+        memo: "GeoPi Test Payment",
+        metadata: { app: "GeoPi", purpose: "setup-check" }
+      });
+
+      status.innerHTML = "Zahlung erfolgreich! ✔ Schritt 10 abgeschlossen.";
+    } catch (err) {
+      status.innerHTML = "Fehler: " + err;
+    }
+  };
+</script>
+
 </body>
 </html>
