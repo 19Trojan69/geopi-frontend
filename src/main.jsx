@@ -1,21 +1,22 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
-import './index.css'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App.jsx";
+import "./index.css";
 
-// 🔐 Pi SDK initialisieren
+// ✅ Pi SDK initialisieren – VOR dem Render
 if (window.Pi) {
-  window.Pi.init({
-    version: "2.0",
-    sandbox: false
-  })
-  console.log("Pi SDK initialized")
+  try {
+    window.Pi.init({ version: "2.0", sandbox: false });
+    console.log("✅ Pi SDK initialized");
+  } catch (err) {
+    console.error("❌ Pi SDK init failed", err);
+  }
 } else {
-  console.warn("Pi SDK NOT available")
+  console.warn("⚠️ Pi SDK NOT available (not in Pi Browser?)");
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
     <App />
-  </React.StrictMode>,
-)
+  </StrictMode>
+);
