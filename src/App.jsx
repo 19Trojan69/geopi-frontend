@@ -1,35 +1,133 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useMemo, useState } from "react";
 
-function App() {
-  const [count, setCount] = useState(0)
+const isPiBrowser = () => typeof window !== "undefined" && !!window.Pi;
+
+export default function App() {
+  const [piReady, setPiReady] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  const [authError, setAuthError] = useState("");
+
+  const [payLoading, setPayLoading] = useState(false);
+  const [payResult, setPayResult] = useState("");
+
+  const inPi = useMemo(() => isPiBrowser(), []);
+
+  // ✅ Auto-Login beim Start (wenn in Pi Browser)
+  useEffect(() => {
+    if (!inPi) return;
+
+    try {
+      window.Pi.init({ version: "2.0", sandbox: false });
+      setPiReady(true);
+    } catch (e) {
+      console.warn("Pi.init failed", e);
+    }
+  }, [inPi]);
+
+  // 🔐 Login Funktion
+  const login = async () => {
+    setAuthError("");
+    setAuthLoading(true);
+
+    try {
+      if (!window.Pi) throw new Error("Pi SDK not available (not in Pi Browser?)");
+
+      const scopes = ["username"];
+
+      const authResult = await window.Pi.authenticate(scopes, (payment) => {
+        console.log("Incomplete payment found:", payment);
+        return payment;
+      });
+
+      setUser(authResult?.user || authResult);
+    } catch (err) {
+      setAuthError(err?.message || "Login failed");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // 💳 Test-Payment Funktion (Demo)
+  const testPayment = async () => {
+    setPayResult("");
+    setPayLoading(true);
+
+    try {
+      if (!window.Pi) throw new Error("Pi SDK not available");
+      if (!user) throw new Error("Not logged in");
+
+      const paymentData = {
+        amount: 1,
+        memo: "GeoPi Test Payment",
+        metadata: { purpose: "test" },
+      };
+
+      const payment = await window.Pi.createPayment(paymentData, {
+        onReadyForServerApproval: (paymentId) => {
+          console.log("onReadyForServerApproval paymentId:", paymentId);
+        },
+        onReadyForServerCompletion: (paymentId, txid) => {
+          console.log("onReadyForServerCompletion:", paymentId, txid);
+          setPayResult(`✅ Payment completed (txid: ${txid || "n/a"})`);
+        },
+        onCancel: (paymentId) => {
+          setPayResult("⚠️ Payment cancelled");
+        },
+        onError: (error, payment) => {
+          console.error("Payment error:", error, payment);
+          setPayResult(`❌ Payment error: ${error?.message || "unknown"}`);
+        },
+      });
+
+      console.log("Payment created:", payment);
+      if (!payResult) setPayResult("✅ Payment created (waiting for callbacks)");
+    } catch (err) {
+      setPayResult(`❌ ${err?.message || "Payment failed"}`);
+    } finally {
+      setPayLoading(false);
+    }
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <div style={{ padding: 24, fontFamily: "system-ui, Arial", maxWidth: 720, margin: "0 auto" }}>
+      <h1>GeoPi</h1>
 
-export default App
+      {!inPi && (
+        <div style={{ padding: 12, border: "1px solid #444", borderRadius: 8, marginBottom: 16 }}>
+          <b>Du bist nicht im Pi Browser.</b>
+          <div>Pi Login & Payments funktionieren nur im Pi Browser / Pi App.</div>
+        </div>
+      )}
+
+      {inPi && (
+        <div style={{ padding: 12, border: "1px solid #444", borderRadius: 8, marginBottom: 16 }}>
+          <div>Pi SDK: {piReady ? "✅ ready" : "⏳ init..."}</div>
+          <div>User: {user ? `✅ ${user.username || "logged in"}` : "❌ not logged in"}</div>
+        </div>
+      )}
+
+      {inPi && !user && (
+        <button onClick={login} disabled={authLoading} style={{ padding: "10px 14px" }}>
+          {authLoading ? "Logging in..." : "Mit Pi anmelden"}
+        </button>
+      )}
+
+      {authError && <div style={{ marginTop: 12, color: "tomato" }}>{authError}</div>}
+
+      {inPi && user && (
+        <div style={{ marginTop: 24 }}>
+          <h2>Payments</h2>
+          <button onClick={testPayment} disabled={payLoading} style={{ padding: "10px 14px" }}>
+            {payLoading ? "Paying..." : "Test Payment (1 Pi)"}
+          </button>
+          {payResult && <div style={{ marginTop: 12 }}>{payResult}</div>}
+
+          <div style={{ marginTop: 10, opacity: 0.8, fontSize: 13 }}>
+            Hinweis: Für echte Zahlungen brauchst du ein Backend, das Approval/Completion serverseitig macht.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
