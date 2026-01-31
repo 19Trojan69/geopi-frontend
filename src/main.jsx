@@ -6,7 +6,7 @@ import "./index.css";
 // ✅ Pi SDK init NUR EINMAL hier (vor React Render)
 try {
   if (typeof window !== "undefined" && window.Pi) {
-    window.Pi.init({ version: "2.0", sandbox: false });
+    window.Pi.init({ version: "2.0", sandbox: true });
     console.log("✅ Pi SDK initialized (main.jsx)");
   } else {
     console.log("ℹ️ Pi SDK not found (not in Pi Browser)");
