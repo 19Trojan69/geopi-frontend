@@ -11,26 +11,25 @@ export default function App() {
   const [payLoading, setPayLoading] = useState(false);
   const [payResult, setPayResult] = useState("");
 
-  // 🔐 Login Funktion
+  // 🔐 LOGIN (MIT payments-SCOPE)
   const login = async () => {
     setAuthError("");
     setAuthLoading(true);
 
     try {
-      if (!window.Pi) throw new Error("Pi SDK not available (not in Pi Browser?)");
+      if (!window.Pi) throw new Error("Pi SDK not available (not in Pi Browser)");
 
-      const scopes = ["username"];
+      const scopes = ["username", "payments"];
 
       const authResult = await window.Pi.authenticate(scopes, (payment) => {
-        console.log("Incomplete payment found:", payment);
+        console.log("🔁 Incomplete payment found:", payment);
         return payment;
       });
 
-      // authResult kann je nach SDK/Version unterschiedlich aussehen
       const u = authResult?.user || authResult;
       setUser(u);
 
-      console.log("✅ Auth result:", authResult);
+      console.log("✅ Auth success:", authResult);
     } catch (err) {
       console.error("❌ Login error:", err);
       setAuthError(err?.message || "Login failed");
@@ -39,7 +38,7 @@ export default function App() {
     }
   };
 
-  // 💳 Test Payment (Frontend-Trigger)
+  // 💳 SANDBOX TEST PAYMENT (OHNE BACKEND – NUR FLOW TEST)
   const testPayment = async () => {
     setPayResult("");
     setPayLoading(true);
@@ -50,31 +49,35 @@ export default function App() {
 
       const paymentData = {
         amount: 1,
-        memo: "GeoPi Test Payment",
-        metadata: { purpose: "test" },
+        memo: "GeoPi Sandbox Test Payment",
+        metadata: { purpose: "sandbox-test" },
       };
 
-      const payment = await window.Pi.createPayment(paymentData, {
+      await window.Pi.createPayment(paymentData, {
         onReadyForServerApproval: (paymentId) => {
-          console.log("onReadyForServerApproval paymentId:", paymentId);
-          // ⚠️ Ohne Backend kannst du hier NICHT wirklich approven.
+          console.log("✅ READY FOR SERVER APPROVAL:", paymentId);
+          setPayResult(
+            `✅ Wallet approved. Waiting for server approval… (paymentId: ${paymentId})`
+          );
         },
+
         onReadyForServerCompletion: (paymentId, txid) => {
-          console.log("onReadyForServerCompletion:", paymentId, txid);
+          console.log("✅ COMPLETED:", paymentId, txid);
           setPayResult(`✅ Payment completed (txid: ${txid || "n/a"})`);
         },
+
         onCancel: (paymentId) => {
-          setPayResult("⚠️ Payment cancelled");
+          console.log("⚠️ CANCELLED:", paymentId);
+          setPayResult("⚠️ Payment cancelled by user");
         },
+
         onError: (error, payment) => {
-          console.error("Payment error:", error, payment);
+          console.error("❌ PAYMENT ERROR:", error, payment);
           setPayResult(`❌ Payment error: ${error?.message || "unknown"}`);
         },
       });
-
-      console.log("Payment created:", payment);
-      setPayResult("✅ Payment created (waiting for callbacks)");
     } catch (err) {
+      console.error("❌ Payment failed:", err);
       setPayResult(`❌ ${err?.message || "Payment failed"}`);
     } finally {
       setPayLoading(false);
@@ -88,7 +91,7 @@ export default function App() {
       {!inPi && (
         <div style={{ padding: 12, border: "1px solid #444", borderRadius: 8, marginBottom: 16 }}>
           <b>Du bist nicht im Pi Browser.</b>
-          <div>Pi Login & Payments funktionieren nur im Pi Browser / Pi App.</div>
+          <div>Pi Login & Payments funktionieren nur im Pi Browser.</div>
         </div>
       )}
 
@@ -101,7 +104,7 @@ export default function App() {
 
       {inPi && !user && (
         <button onClick={login} disabled={authLoading} style={{ padding: "10px 14px" }}>
-          {authLoading ? "Logging in..." : "Mit Pi anmelden"}
+          {authLoading ? "Logging in…" : "Mit Pi anmelden"}
         </button>
       )}
 
@@ -110,14 +113,15 @@ export default function App() {
       {inPi && user && (
         <div style={{ marginTop: 24 }}>
           <h2>Payments</h2>
+
           <button onClick={testPayment} disabled={payLoading} style={{ padding: "10px 14px" }}>
-            {payLoading ? "Paying..." : "Test Payment (1 Pi)"}
+            {payLoading ? "Paying…" : "Sandbox Test Payment (1 Pi)"}
           </button>
 
           {payResult && <div style={{ marginTop: 12 }}>{payResult}</div>}
 
           <div style={{ marginTop: 10, opacity: 0.8, fontSize: 13 }}>
-            Hinweis: Für echte Zahlungen brauchst du ein Backend, das Approval/Completion serverseitig macht.
+            Sandbox-Test: Ohne Backend endet der Flow nach Wallet-Approval – das ist korrekt.
           </div>
         </div>
       )}
