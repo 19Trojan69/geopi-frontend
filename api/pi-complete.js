@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     const r = await fetch(url, {
       method: "POST",
       headers: {
-        authorization: `key ${apiKey}`,
+        "Authorization": `Key ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ txid }),
@@ -28,3 +28,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Server error", details: String(e?.message || e) });
   }
 }
+
