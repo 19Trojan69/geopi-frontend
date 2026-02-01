@@ -38,7 +38,7 @@ export default function App() {
     }
   };
 
-  // 💳 SANDBOX TEST PAYMENT (OHNE BACKEND – NUR FLOW TEST)
+  // 💳 SANDBOX PAYMENT (MIT BACKEND APPROVE + COMPLETE)
   const testPayment = async () => {
     setPayResult("");
     setPayLoading(true);
@@ -54,16 +54,42 @@ export default function App() {
       };
 
       await window.Pi.createPayment(paymentData, {
-        onReadyForServerApproval: (paymentId) => {
+        onReadyForServerApproval: async (paymentId) => {
           console.log("✅ READY FOR SERVER APPROVAL:", paymentId);
-          setPayResult(
-            `✅ Wallet approved. Waiting for server approval… (paymentId: ${paymentId})`
-          );
+          setPayResult(`⏳ Approving on server… (paymentId: ${paymentId})`);
+
+          const r = await fetch("/api/pi-approve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentId }),
+          });
+
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            console.error("❌ Server approve failed:", data);
+            throw new Error(data?.error || "Server approve failed");
+          }
+
+          setPayResult("✅ Server approved. Waiting for completion…");
         },
 
-        onReadyForServerCompletion: (paymentId, txid) => {
-          console.log("✅ COMPLETED:", paymentId, txid);
-          setPayResult(`✅ Payment completed (txid: ${txid || "n/a"})`);
+        onReadyForServerCompletion: async (paymentId, txid) => {
+          console.log("✅ READY FOR SERVER COMPLETION:", paymentId, txid);
+          setPayResult(`⏳ Completing on server… (txid: ${txid || "n/a"})`);
+
+          const r = await fetch("/api/pi-complete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentId, txid }),
+          });
+
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            console.error("❌ Server complete failed:", data);
+            throw new Error(data?.error || "Server complete failed");
+          }
+
+          setPayResult(`✅ Payment completed! (txid: ${txid || "n/a"})`);
         },
 
         onCancel: (paymentId) => {
@@ -115,13 +141,13 @@ export default function App() {
           <h2>Payments</h2>
 
           <button onClick={testPayment} disabled={payLoading} style={{ padding: "10px 14px" }}>
-            {payLoading ? "Paying…" : "Sandbox Test Payment (1 Pi)"}
+            {payLoading ? "Paying…" : "Sandbox Payment (1 Pi)"}
           </button>
 
           {payResult && <div style={{ marginTop: 12 }}>{payResult}</div>}
 
           <div style={{ marginTop: 10, opacity: 0.8, fontSize: 13 }}>
-            Sandbox-Test: Ohne Backend endet der Flow nach Wallet-Approval – das ist korrekt.
+            Backend aktiv: Approve + Complete werden serverseitig aufgerufen.
           </div>
         </div>
       )}
