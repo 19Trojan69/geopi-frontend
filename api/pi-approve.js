@@ -12,7 +12,9 @@ export default async function handler(req, res) {
 
     const r = await fetch(url, {
       method: "POST",
-      headers: { authorization: `key ${apiKey}` },
+      headers: {
+        "Authorization": `Key ${apiKey}`,
+      },
     });
 
     const data = await r.json().catch(() => ({}));
